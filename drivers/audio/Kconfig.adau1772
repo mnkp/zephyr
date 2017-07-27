@@ -1,0 +1,129 @@
+# Kconfig - ADAU1772 Audio Processor configuration options
+#
+# Copyright (c) 2017 Piotr Mienkowski
+# SPDX-License-Identifier: Apache-2.0
+#
+
+menuconfig AUDIO_ADAU1772
+	bool "ADAU1772 Audio Processor"
+	default n
+	help
+	  Enable support for ADAU1772 Audio Processor. The ADAU1772 is a codec
+	  with four inputs and two outputs that incorporates a digital
+	  processing engine to perform filtering, level control, signal level
+	  monitoring, and mixing.
+
+if AUDIO_ADAU1772
+
+# ---------- Device 0 ----------
+
+config AUDIO_ADAU1772_0
+	bool "Device 0"
+	default n
+	help
+	  Enable Device 0.
+
+if AUDIO_ADAU1772_0
+
+config ADAU1772_0_NAME
+	string "Device 0 name"
+	default "ADAU1772_0"
+	help
+	  Device name allows user to obtain a handle to the device object
+	  required by all driver API functions. Device name has to be unique.
+
+config ADAU1772_0_PLL_INPUT_DIVIDER
+	int "PLL Input Divider (X+1)"
+	range 1 4
+	help
+	  PLL Input Divider (X+1).
+
+config ADAU1772_0_PLL_INTEGER
+	int "PLL Integer (R)"
+	range 2 8
+	help
+	  PLL Integer (R).
+
+config ADAU1772_0_PLL_NUMERATOR
+	int "PLL Numerator (N)"
+	range 0 255
+	help
+	  PLL Numerator (N).
+
+config ADAU1772_0_PLL_DENOMINATOR
+	int "PLL Denominator (M)"
+	range 0 255
+	help
+	  PLL Denominator (M).
+
+config ADAU1772_0_I2S_DEV_NAME
+	string "I2S bus driver device name"
+	default "I2S_0"
+	help
+	  Device name, e.g. I2S_0, of an I2S bus driver device. It is required
+	  to obtain handle to the I2S device object.
+
+config ADAU1772_0_I2C_DEV_NAME
+	string "I2C bus driver device name"
+	default "I2C_0"
+	help
+	  Device name, e.g. I2C_0, of an I2C bus driver device. It is required
+	  to obtain handle to the I2C device object.
+
+config ADAU1772_0_MULTICHIP
+	bool "Support multichip configuration"
+	default n
+	help
+	  Enable support for up to 4 ADAU1772 chips on one I2S bus.
+
+choice ADAU1772_0_I2C_SLAVE_SELECT
+	prompt "I2C ADAU1772 chip address"
+	depends on !ADAU1772_0_MULTICHIP
+	help
+	  7-bit I2C address of the ADAU1772 chip.
+
+	config ADAU1772_0_I2C_SLAVE_0
+		bool "I2C 0x3C"
+
+	config ADAU1772_0_I2C_SLAVE_1
+		bool "I2C 0x3D"
+
+	config ADAU1772_0_I2C_SLAVE_2
+		bool "I2C 0x3E"
+
+	config ADAU1772_0_I2C_SLAVE_3
+		bool "I2C 0x3F"
+
+endchoice # ADAU1772_0_I2C_SLAVE_SELECT
+
+config ADAU1772_0_I2C_SLAVE_MULTICHIP_0
+	bool "I2C 0x3C"
+	default n
+	depends on ADAU1772_0_MULTICHIP
+	help
+	  Enable support for ADAU1772 chip with I2C address 0x3C.
+
+config ADAU1772_0_I2C_SLAVE_MULTICHIP_1
+	bool "I2C 0x3D"
+	default n
+	depends on ADAU1772_0_MULTICHIP
+	help
+	  Enable support for ADAU1772 chip with I2C address 0x3D.
+
+config ADAU1772_0_I2C_SLAVE_MULTICHIP_2
+	bool "I2C 0x3E"
+	default n
+	depends on ADAU1772_0_MULTICHIP
+	help
+	  Enable support for ADAU1772 chip with I2C address 0x3E.
+
+config ADAU1772_0_I2C_SLAVE_MULTICHIP_3
+	bool "I2C 0x3F"
+	default n
+	depends on ADAU1772_0_MULTICHIP
+	help
+	  Enable support for ADAU1772 chip with I2C address 0x3F.
+
+endif # AUDIO_ADAU1772_0
+
+endif # AUDIO_ADAU1772

@@ -1,0 +1,91 @@
+/*
+ * Copyright (c) 2017 comsuisse AG
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/** @file
+ * @brief ADAU1772 Audio Processor control registers.
+ */
+
+#ifndef __ADAU1772_H__
+#define __ADAU1772_H__
+
+#define ADAU1772_CLK_CONTROL      0x00
+#define ADAU1772_PLL_CTRL0        0x01
+#define ADAU1772_PLL_CTRL1        0x02
+#define ADAU1772_PLL_CTRL2        0x03
+#define ADAU1772_PLL_CTRL3        0x04
+#define ADAU1772_PLL_CTRL4        0x05
+#define ADAU1772_PLL_CTRL5        0x06
+#define ADAU1772_CLKOUT_SEL       0x07
+#define ADAU1772_REGULATOR        0x08
+#define ADAU1772_CORE_CONTROL     0x09
+#define ADAU1772_CORE_ENABLE      0x0B
+#define ADAU1772_DBREG0           0x0C
+#define ADAU1772_DBREG1           0x0D
+#define ADAU1772_DBREG2           0x0E
+#define ADAU1772_CORE_IN_MUX_0_1  0x0F
+#define ADAU1772_CORE_IN_MUX_2_3  0x10
+#define ADAU1772_DAC_SOURCE_0_1   0x11
+#define ADAU1772_PDM_SOURCE_0_1   0x12
+#define ADAU1772_SOUT_SOURCE_0_1  0x13
+#define ADAU1772_SOUT_SOURCE_2_3  0x14
+#define ADAU1772_SOUT_SOURCE_4_5  0x15
+#define ADAU1772_SOUT_SOURCE_6_7  0x16
+#define ADAU1772_ADC_SDATA_CH     0x17
+#define ADAU1772_ASRCO_SOURCE_0_1 0x18
+#define ADAU1772_ASRCO_SOURCE_2_3 0x19
+#define ADAU1772_ASRC_MODE        0x1A
+#define ADAU1772_ADC_CONTROL0     0x1B
+#define ADAU1772_ADC_CONTROL1     0x1C
+#define ADAU1772_ADC_CONTROL2     0x1D
+#define ADAU1772_ADC_CONTROL3     0x1E
+#define ADAU1772_ADC0_VOLUME      0x1F
+#define ADAU1772_ADC1_VOLUME      0x20
+#define ADAU1772_ADC2_VOLUME      0x21
+#define ADAU1772_ADC3_VOLUME      0x22
+#define ADAU1772_PGA_CONTROL_0    0x23
+#define ADAU1772_PGA_CONTROL_1    0x24
+#define ADAU1772_PGA_CONTROL_2    0x25
+#define ADAU1772_PGA_CONTROL_3    0x26
+#define ADAU1772_PGA_STEP_CONTROL 0x27
+#define ADAU1772_PGA_10DB_BOOST   0x28
+#define ADAU1772_POP_SUPPRESS     0x29
+#define ADAU1772_TALKTHRU         0x2A
+#define ADAU1772_TALKTHRU_GAIN0   0x2B
+#define ADAU1772_TALKTHRU_GAIN1   0x2C
+#define ADAU1772_MIC_BIAS         0x2D
+#define ADAU1772_DAC_CONTROL1     0x2E
+#define ADAU1772_DAC0_VOLUME      0x2F
+#define ADAU1772_DAC1_VOLUME      0x30
+#define ADAU1772_OP_STAGE_MUTES   0x31
+#define ADAU1772_SAI_0            0x32
+#define ADAU1772_SAI_1            0x33
+#define ADAU1772_SOUT_CONTROL0    0x34
+#define ADAU1772_SOUT_CONTROL1    0x35
+#define ADAU1772_PDM_OUT          0x36
+#define ADAU1772_PDM_PATTERN      0x37
+#define ADAU1772_MODE_MP0         0x38
+#define ADAU1772_MODE_MP1         0x39
+#define ADAU1772_MODE_MP2         0x3A
+#define ADAU1772_MODE_MP3         0x3B
+#define ADAU1772_MODE_MP4         0x3C
+#define ADAU1772_MODE_MP5         0x3D
+#define ADAU1772_MODE_MP6         0x3E
+#define ADAU1772_PB_VOL_SET       0x3F
+#define ADAU1772_PB_VOL_CONV      0x40
+#define ADAU1772_DEBOUNCE_MODE    0x41
+#define ADAU1772_RESERVED         0x42
+#define ADAU1772_OP_STAGE_CTRL    0x43
+#define ADAU1772_DECIM_PWR_MODES  0x44
+#define ADAU1772_INTERP_PWR_MODES 0x45
+#define ADAU1772_BIAS_CONTROL0    0x46
+#define ADAU1772_BIAS_CONTROL1    0x47
+#define ADAU1772_PAD_CONTROL0     0x48
+#define ADAU1772_PAD_CONTROL1     0x49
+#define ADAU1772_PAD_CONTROL2     0x4A
+#define ADAU1772_PAD_CONTROL3     0x4B
+#define ADAU1772_PAD_CONTROL4     0x4C
+#define ADAU1772_PAD_CONTROL5     0x4D
+
+#endif /* __ADAU1772_H__ */
