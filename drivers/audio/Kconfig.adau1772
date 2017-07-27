@@ -1,0 +1,14 @@
+# Kconfig - ADAU1772 Audio Processor configuration options
+#
+# Copyright (c) 2021 Piotr Mienkowski
+# SPDX-License-Identifier: Apache-2.0
+#
+
+config AUDIO_ADAU1772
+	bool "ADAU1772 Audio Processor"
+	default n
+	help
+	  Enable support for ADAU1772 Audio Processor. The ADAU1772 is a codec
+	  with four inputs and two outputs that incorporates a digital
+	  processing engine to perform filtering, level control, signal level
+	  monitoring, and mixing.

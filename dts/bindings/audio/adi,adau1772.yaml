@@ -1,0 +1,32 @@
+# Copyright (c) 2021, Piotr Mienkowski
+# SPDX-License-Identifier: Apache-2.0
+
+description: Analog Devices ADAU1772
+
+compatible: "adi,adau1772"
+
+include: i2c-device.yaml
+
+properties:
+    reg:
+      required: true
+      description: |
+        Device address on i2c bus. Value depends on the state of ADDR0 and
+        ADDR1, as wired in hardware.
+
+    pd-gpios:
+      type: phandle-array
+      required: false
+      description: Power Down pin
+
+    input-channels:
+      type: string
+      required: false
+      enum:
+       - "0-1"
+       - "2-3"
+       - "4-5"
+       - "6-7"
+      description: |
+        Selects serial input port channels that contain device data. The value
+        is used to configure Input ASRC Channel Select Register.
