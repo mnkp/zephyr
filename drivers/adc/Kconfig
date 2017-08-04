@@ -77,6 +77,15 @@ config ADC_1_IRQ_PRI
 	prompt "ADC 1 interrupt priority"
 	default 2
 
+menuconfig ADC_SAM_AFEC
+	bool "SAM ADC Driver"
+	depends on SOC_FAMILY_SAM
+	select HAS_DTS_ADC
+	default n
+	help
+	  Enable Atmel SAM MCU Family Analog-to-Digital Converter (ADC) driver
+	  based on AFEC module.
+
 menuconfig ADC_TI_ADC108S102
 	bool "TI adc108s102 chip driver"
 	select SPI
