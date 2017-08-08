@@ -112,6 +112,8 @@ enum sensor_channel {
 	SENSOR_CHAN_BLUE,
 	/** Altitude, in meters */
 	SENSOR_CHAN_ALTITUDE,
+	/** Position */
+	SENSOR_POSITION,
 	/** All channels. */
 	SENSOR_CHAN_ALL,
 };
