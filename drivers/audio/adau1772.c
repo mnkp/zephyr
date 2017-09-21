@@ -328,6 +328,14 @@ static int adau1772_trigger(struct device *dev, u32_t dir,
 	return i2s_trigger(dev_data->dev_i2s, dir, cmd);
 }
 
+static int adau1772_register_callback(struct device *dev, enum i2s_dir dir,
+				      i2s_callback_t cb, void *arg)
+{
+	struct adau1772_dev_data *const dev_data = DEV_DATA(dev);
+
+	return i2s_register_callback(dev_data->dev_i2s, dir, cb, arg);
+}
+
 static int adau1772_volume(struct device *dev, u32_t channel, s32_t volume)
 {
 	const struct adau1772_dev_cfg *const dev_cfg = DEV_CFG(dev);
@@ -392,6 +400,7 @@ static const struct audio_driver_api adau1772_driver_api = {
 	.read = adau1772_read,
 	.write = adau1772_write,
 	.trigger = adau1772_trigger,
+	.register_callback = adau1772_register_callback,
 	.volume = adau1772_volume,
 };
 

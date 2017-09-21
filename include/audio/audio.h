@@ -27,6 +27,8 @@
 extern "C" {
 #endif
 
+typedef void (*audio_callback_t)(struct device *dev, void *arg);
+
 /** PCM Rate bit field position */
 #define AUDIO_PCM_RATE_SHIFT         0
 /** PCM Rate bit field mask */
@@ -129,12 +131,15 @@ typedef int (*audio_api_trigger_t)(struct device *dev, u32_t dir,
 				   enum audio_trigger_cmd cmd);
 typedef int (*audio_api_audio_volume_t)(struct device *dev, u32_t channel,
 					s32_t volume);
+typedef int (*audio_register_callback_t)(struct device *dev, enum i2s_dir dir,
+					 audio_callback_t cb, void *arg);
 
 struct audio_driver_api {
 	audio_api_pcm_configure_t pcm_configure;
 	audio_api_read_t read;
 	audio_api_write_t write;
 	audio_api_trigger_t trigger;
+	audio_register_callback_t register_callback;
 	audio_api_audio_volume_t volume;
 };
 /**
@@ -213,6 +218,30 @@ static inline int audio_trigger(struct device *dev, u32_t dir,
 	const struct audio_driver_api *api = dev->driver_api;
 
 	return api->trigger(dev, dir, cmd);
+}
+
+/**
+ * @brief Install transfer callback.
+ *
+ * The callback function will be executed at the end of each transferred or
+ * received memory block. It's primary goal is to help synchronize timing.
+ *
+ * @remark The callback function will be executed in the interrupt context.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param dir Stream direction: RX or TX.
+ * @param cb  Pointer to the callback function.
+ * @param arg argument which will be passed to the callback function.
+ *
+ * @retval 0 If successful.
+ * @retval -EINVAL Invalid argument.
+ */
+static inline int audio_register_callback(struct device *dev, enum i2s_dir dir,
+					  audio_callback_t cb, void *arg)
+{
+	const struct audio_driver_api *api = dev->driver_api;
+
+	return api->register_callback(dev, dir, cb, arg);
 }
 
 /**
