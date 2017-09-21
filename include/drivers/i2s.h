@@ -309,6 +309,8 @@ struct i2s_config {
 	int32_t timeout;
 };
 
+typedef void (*i2s_callback_t)(const struct device *dev, void *arg);
+
 /**
  * @cond INTERNAL_HIDDEN
  *
@@ -323,6 +325,8 @@ __subsystem struct i2s_driver_api {
 	int (*write)(const struct device *dev, void *mem_block, size_t size);
 	int (*trigger)(const struct device *dev, enum i2s_dir dir,
 		       enum i2s_trigger_cmd cmd);
+	int (*register_callback)(const struct device *dev, enum i2s_dir dir,
+				 i2s_callback_t cb, void *arg);
 };
 /**
  * @endcond
@@ -530,6 +534,31 @@ static inline int z_impl_i2s_trigger(const struct device *dev,
 		(const struct i2s_driver_api *)dev->api;
 
 	return api->trigger(dev, dir, cmd);
+}
+
+/**
+ * @brief Install transfer callback.
+ *
+ * The callback function will be executed at the end of each transferred or
+ * received memory block. It's primary goal is to help synchronize timing.
+ *
+ * @remark The callback function will be executed in the interrupt context.
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ * @param dir Stream direction: RX or TX.
+ * @param cb  Pointer to the callback function.
+ * @param arg argument which will be passed to the callback function.
+ *
+ * @retval 0 If successful.
+ * @retval -EINVAL Invalid argument.
+ */
+static inline int i2s_register_callback(const struct device *dev, enum i2s_dir dir,
+					i2s_callback_t cb, void *arg)
+{
+	const struct i2s_driver_api *api =
+		(const struct i2s_driver_api *)dev->api;
+
+	return api->register_callback(dev, dir, cb, arg);
 }
 
 /**

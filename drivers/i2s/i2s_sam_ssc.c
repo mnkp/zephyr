@@ -82,6 +82,8 @@ struct stream {
 	struct ring_buf mem_block_queue;
 	void *mem_block;
 	bool last_block;
+	i2s_callback_t callback;
+	void *callback_arg;
 	int (*stream_start)(struct stream *, Ssc *const,
 			    const struct device *);
 	void (*stream_disable)(struct stream *, Ssc *const,
@@ -219,6 +221,9 @@ static void dma_rx_callback(const struct device *dma_dev, void *user_data,
 		goto rx_disable;
 	}
 	stream->mem_block = NULL;
+	if (stream->callback) {
+		stream->callback(dev, stream->callback_arg);
+	}
 	k_sem_give(&stream->sem);
 
 	/* Stop reception if we were requested */
@@ -267,6 +272,10 @@ static void dma_tx_callback(const struct device *dma_dev, void *user_data,
 	/* All block data sent */
 	k_mem_slab_free(stream->cfg.mem_slab, &stream->mem_block);
 	stream->mem_block = NULL;
+
+	if (stream->callback) {
+		stream->callback(dev, stream->callback_arg);
+	}
 
 	/* Stop transmission if there was an error */
 	if (stream->state == I2S_STATE_ERROR) {
@@ -893,6 +902,27 @@ static int i2s_sam_write(const struct device *dev, void *mem_block,
 	return 0;
 }
 
+static int i2s_sam_register_callback(const struct device *dev, enum i2s_dir dir,
+				     i2s_callback_t cb, void *arg)
+{
+	struct i2s_sam_dev_data *const dev_data = DEV_DATA(dev);
+	struct stream *stream;
+
+	if (dir == I2S_DIR_RX) {
+		stream = &dev_data->rx;
+	} else if (dir == I2S_DIR_TX) {
+		stream = &dev_data->tx;
+	} else {
+		LOG_ERR("Either RX or TX direction must be selected");
+		return -EINVAL;
+	}
+
+	stream->callback = cb;
+	stream->callback_arg = arg;
+
+	return 0;
+}
+
 static void i2s_sam_isr(const struct device *dev)
 {
 	const struct i2s_sam_dev_cfg *const dev_cfg = DEV_CFG(dev);
@@ -961,6 +991,7 @@ static const struct i2s_driver_api i2s_sam_driver_api = {
 	.read = i2s_sam_read,
 	.write = i2s_sam_write,
 	.trigger = i2s_sam_trigger,
+	.register_callback = i2s_sam_register_callback,
 };
 
 /* I2S0 */
