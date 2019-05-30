@@ -1,0 +1,6 @@
+sample:
+  name: Power Management Sleep State Sample
+tests:
+  test:
+    tags: power
+    depends_on: low_power
