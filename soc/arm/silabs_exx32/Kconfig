@@ -102,15 +102,15 @@ config SOC_GECKO_TRNG
 	help
 	  Set if the SoC has a True Random Number Generator (TRNG) module.
 
-config SOC_GECKO_HAS_IEEE802154_RADIO
+config SOC_GECKO_HAS_RAIL_LIB
 	bool
 	help
-	  If enabled, indicates that SoC supports IEEE 802.15.4 radio.
+	  If enabled, indicates that SoC supports RAIL radio library.
 
 menuconfig SOC_GECKO_RAIL_LIB
 	bool "Enable RAIL radio library"
 	depends on THIRD_PARTY_BINARY_BLOBS
-	depends on SOC_GECKO_HAS_IEEE802154_RADIO
+	depends on SOC_GECKO_HAS_RAIL_LIB
 	select SOC_GECKO_CORE
 	select SOC_GECKO_EMU
 	help
@@ -127,7 +127,6 @@ config APP_LINK_WITH_RAIL_LIB
 
 config SOC_GECKO_RAIL_LIB_IEEE802154
 	bool "Enable support for IEEE 802.15.4 protocol"
-	depends on SOC_GECKO_HAS_IEEE802154_RADIO
 
 endif # SOC_GECKO_RAIL_LIB
 
