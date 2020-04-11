@@ -148,6 +148,14 @@ static int silabs_exx32_init(struct device *arg)
 	dcdc_init();
 #endif
 
+#ifdef CONFIG_SOC_GECKO_EMU_DCDC
+	/*
+	 * Initialize DCDC before attempting to set clock, HFXO for example
+	 * requires this
+	 */
+	dcdc_init();
+#endif
+
 	/* Initialize system clock according to CONFIG_CMU settings */
 	clock_init();
 
