@@ -34,12 +34,12 @@ if NETWORKING
 if !NET_L2_OPENTHREAD
 
 config NET_L2_IEEE802154
-	default y
+	def_bool y
 
 endif # NET_L2_OPENTHREAD
 
 config IEEE802154_EFR
-	default y
+	def_bool y
 
 config NET_CONFIG_IEEE802154_DEV_NAME
 	default IEEE802154_EFR_DRV_NAME

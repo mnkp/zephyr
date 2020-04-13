@@ -20,7 +20,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <net/ieee802154_radio.h>
 #include <net/net_if.h>
 #include <net/net_pkt.h>
-#include <misc/byteorder.h>
+#include <sys/byteorder.h>
 #include <random/rand32.h>
 
 #include "rail_types.h"
@@ -318,13 +318,15 @@ static int efr32_stop(struct device *dev)
     return 0;
 }
 
-static int efr32_tx(struct device *dev, struct net_pkt *pkt,
+static int efr32_tx(struct device *dev,
+                    enum ieee802154_tx_mode mode,
+                    struct net_pkt *pkt,
                     struct net_buf *frag)
 {
     struct efr32_context *efr32 = dev->driver_data;
 
-    u8_t payload_len = net_pkt_ll_reserve(pkt) + frag->len;
-    u8_t *payload = frag->data - net_pkt_ll_reserve(pkt);
+    u8_t payload_len = frag->len;
+    u8_t *payload = frag->data;
     u16_t written;
 
     RAIL_TxOptions_t tx_opts = RAIL_TX_OPTIONS_NONE;
@@ -569,8 +571,6 @@ static void efr32_rail_cb(RAIL_Handle_t rail_handle, RAIL_Events_t events)
 
 static struct ieee802154_radio_api efr32_radio_api = {
     .iface_api.init = efr32_iface_init,
-    .iface_api.send = ieee802154_radio_send,
-
     .get_capabilities = efr32_get_capabilities,
     .cca = efr32_cca,
     .set_channel = efr32_set_channel,
@@ -598,6 +598,7 @@ NET_DEVICE_INIT(
     efr32,
     CONFIG_IEEE802154_EFR32_DRV_NAME,
     efr32_init,
+    device_pm_control_nop,
     &efr32_data,
     NULL,
     CONFIG_IEEE802154_EFR32_INIT_PRIO,

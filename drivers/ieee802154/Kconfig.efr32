@@ -9,7 +9,6 @@
 menuconfig  IEEE802154_EFR32
 	bool "Silabs EFR32 Driver support"
 	depends on NETWORKING
-	select NEWLIB_LIBC
 	select HAS_SILABS_RAIL
 
 config HAS_SILABS_RAIL
