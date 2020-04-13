@@ -22,6 +22,10 @@ LOG_MODULE_REGISTER(ieee802154_gecko, CONFIG_IEEE802154_DRIVER_LOG_LEVEL);
 #include <random/rand32.h>
 #include <net/ieee802154_radio.h>
 
+#if defined(CONFIG_NET_L2_OPENTHREAD)
+#include <net/openthread.h>
+#endif
+
 #include <em_system.h>
 #include <rail.h>
 #include <rail_ieee802154.h>
@@ -30,44 +34,41 @@ LOG_MODULE_REGISTER(ieee802154_gecko, CONFIG_IEEE802154_DRIVER_LOG_LEVEL);
 #define RADIO_MAX_FRAME_SIZE                  128
 /* Maximum time to wait for RAIL to send the packet */
 #define TX_PACKET_SENT_TIMEOUT         K_MSEC(100)
-#define IEEE802154_FCS_LENGTH		        2
+
+struct ieee802154_gecko_802154_rx_frame {
+	void *fifo_reserved; /* 1st word reserved for use by fifo. */
+	u8_t *psdu; /* Pointer to a received frame. */
+	u32_t time; /* RX timestamp. */
+	u8_t lqi; /* Last received frame LQI value. */
+	s8_t rssi; /* Last received frame RSSI value. */
+};
 
 struct ieee802154_gecko_context {
 	/* RAIL internal Tx FIFO */
 	u8_t rail_tx_fifo[RADIO_MAX_FRAME_SIZE] __aligned(RAIL_FIFO_ALIGNMENT);
 
-	RAIL_Handle_t rail_handle;
-
 	/* Pointer to the network interface. */
 	struct net_if *iface;
 
-	/* Device 802.15.4 long address. */
+	/* 802.15.4 HW address. */
 	u8_t mac[8];
 
-	/* TX synchronization semaphore. Unlocked when frame has been sent or
-	 * send procedure failed.
+	/* TX synchronization semaphore. Unlocked when frame has been
+	 * sent or send procedure failed.
 	 */
 	struct k_sem tx_wait;
 
 	/* TX result, updated in radio transmit callbacks. */
-	int tx_status;
+	s8_t tx_status;
 
-	/* Transmit / receive channel */
 	u16_t channel;
+
+	RAIL_Handle_t rail_handle;
 };
 
-struct ieee802154_gecko_dev_cfg {
-	/* Initial TX power level in RAIL raw units */
-	RAIL_TxPowerLevel_t init_tx_power_level_raw;
+struct ieee802154_gecko_dev_config {
+	void (*irq_config_func)(struct device *dev);
 };
-
-#define DEV_NAME(dev) ((dev)->config->name)
-
-#define DEV_CFG(dev) \
-	((const struct ieee802154_gecko_dev_cfg *const)(dev)->config->config_info)
-
-#define DEV_DATA(dev) \
-	((struct ieee802154_gecko_context *const)(dev)->driver_data)
 
 static const RAIL_CsmaConfig_t rail_csma_config =
 	RAIL_CSMA_CONFIG_802_15_4_2003_2p4_GHz_OQPSK_CSMA;
@@ -85,7 +86,7 @@ static const RAIL_LbtConfig_t rail_lbt_config = {
 static const RAIL_IEEE802154_Config_t rail_ieee802154_config = {
 	.addresses = NULL,
 	.ackConfig = {
-		.enable = false,
+		.enable = true,
 		.ackTimeout = 672,
 		.rxTransitions = {
 			RAIL_RF_STATE_RX,
@@ -94,23 +95,29 @@ static const RAIL_IEEE802154_Config_t rail_ieee802154_config = {
 		.txTransitions = {
 			RAIL_RF_STATE_RX,
 			RAIL_RF_STATE_RX,
-		},
-	},
-	.timings = {
-		.idleToRx = 100,
-		.idleToTx = 100,
-		.rxToTx = 192,
-		.txToRx = 192,
-		.rxSearchTimeout = 0,
-		.txToRxSearchTimeout = 0,
+		}},
+		.timings = {
+			.idleToRx = 100,
+			.idleToTx = 100,
+			.rxToTx = 192,
+			.txToRx = 192,
+			.rxSearchTimeout = 0,
+			.txToRxSearchTimeout = 0,
 	},
 	.framesMask = RAIL_IEEE802154_ACCEPT_STANDARD_FRAMES,
 	.promiscuousMode = false,
 	.isPanCoordinator = false,
 };
 
-static void ieee802154_gecko_rail_cb(RAIL_Handle_t rail_handle,
-				     RAIL_Events_t event);
+#define DEV_NAME(dev) ((dev)->config->name)
+
+#define DEV_CFG(dev) \
+	((const struct ieee802154_gecko_dev_config *const)(dev)->config->config_info)
+
+#define DEV_DATA(dev) \
+	((struct ieee802154_gecko_context *const)(dev)->driver_data)
+
+static void ieee802154_gecko_rail_cb(RAIL_Handle_t rail_handle, RAIL_Events_t a_events);
 
 static RAIL_Config_t rail_config = {
 	.eventsCallback = &ieee802154_gecko_rail_cb,
@@ -118,7 +125,7 @@ static RAIL_Config_t rail_config = {
 
 static void ieee802154_gecko_get_eui64(u8_t *mac)
 {
-	u64_t uniqueID = SYSTEM_GetUnique();
+	uint64_t uniqueID = SYSTEM_GetUnique();
 
 	memcpy(mac, &uniqueID, sizeof(uniqueID));
 }
@@ -165,8 +172,7 @@ static void ieee802154_gecko_rx(struct device *dev,
 	struct net_ptp_time timestamp = {
 		.second = packet_details.timeReceived.packetTime / USEC_PER_SEC,
 		.nanosecond =
-			(packet_details.timeReceived.packetTime % USEC_PER_SEC)
-			* NSEC_PER_USEC
+			(packet_details.timeReceived.packetTime % USEC_PER_SEC) * NSEC_PER_USEC
 	};
 
 	net_pkt_set_timestamp(pkt, &timestamp);
@@ -204,9 +210,11 @@ static enum ieee802154_hw_caps ieee802154_gecko_get_capabilities(struct device *
 	return IEEE802154_HW_FCS |
 	       IEEE802154_HW_FILTER |
 	       IEEE802154_HW_CSMA |
-	       IEEE802154_HW_2_4_GHZ;
+	       IEEE802154_HW_2_4_GHZ |
+	       IEEE802154_HW_TX_RX_ACK;
 }
 
+/* RAIL handles this in tx() */
 static int ieee802154_gecko_cca(struct device *dev)
 {
 	return 0;
@@ -218,7 +226,9 @@ static int ieee802154_gecko_set_channel(struct device *dev, u16_t channel)
 	RAIL_Status_t status;
 
 	status = RAIL_PrepareChannel(dev_data->rail_handle, channel);
-	if (status != RAIL_STATUS_NO_ERROR) {
+
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
 		return -EIO;
 	}
 
@@ -233,7 +243,9 @@ static int ieee802154_gecko_set_pan_id(struct device *dev, u16_t pan_id)
 	RAIL_Status_t status;
 
 	status = RAIL_IEEE802154_SetPanId(dev_data->rail_handle, pan_id, 0);
-	if (status != RAIL_STATUS_NO_ERROR) {
+
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
 		return -EIO;
 	}
 
@@ -246,20 +258,29 @@ static int ieee802154_gecko_set_short_addr(struct device *dev, u16_t short_addr)
 	RAIL_Status_t status;
 
 	status = RAIL_IEEE802154_SetShortAddress(dev_data->rail_handle, short_addr, 0);
-	if (status != RAIL_STATUS_NO_ERROR) {
+
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
 		return -EIO;
 	}
 
 	return 0;
 }
 
-static int ieee802154_gecko_set_ieee_addr(struct device *dev, const u8_t *addr)
+static int ieee802154_gecko_set_ieee_addr(struct device *dev, const u8_t *ieee_addr)
 {
 	struct ieee802154_gecko_context *dev_data = DEV_DATA(dev);
 	RAIL_Status_t status;
 
-	status = RAIL_IEEE802154_SetLongAddress(dev_data->rail_handle, addr, 0);
-	if (status != RAIL_STATUS_NO_ERROR) {
+	status = RAIL_IEEE802154_SetLongAddress(dev_data->rail_handle, ieee_addr, 0);
+
+	LOG_DBG("IEEE address %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+			ieee_addr[7], ieee_addr[6], ieee_addr[5], ieee_addr[4],
+			ieee_addr[3], ieee_addr[2], ieee_addr[1], ieee_addr[0]);
+
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
+		LOG_ERR("Error setting address via RAIL");
 		return -EIO;
 	}
 
@@ -267,30 +288,30 @@ static int ieee802154_gecko_set_ieee_addr(struct device *dev, const u8_t *addr)
 }
 
 static int ieee802154_gecko_filter(struct device *dev, bool set,
-				   enum ieee802154_filter_type type,
-				   const struct ieee802154_filter *filter)
+                        enum ieee802154_filter_type type,
+                        const struct ieee802154_filter *filter)
 {
-	int ret;
+	LOG_DBG("Applying filter %u", type);
 
-	if (!set) {
+	if (!set)
+	{
 		return -ENOTSUP;
 	}
 
-	switch (type) {
-	case IEEE802154_FILTER_TYPE_IEEE_ADDR:
-		ret = ieee802154_gecko_set_ieee_addr(dev, filter->ieee_addr);
-		break;
-	case IEEE802154_FILTER_TYPE_SHORT_ADDR:
-		ret = ieee802154_gecko_set_short_addr(dev, filter->short_addr);
-		break;
-	case IEEE802154_FILTER_TYPE_PAN_ID:
-		ret = ieee802154_gecko_set_pan_id(dev, filter->pan_id);
-		break;
-	default:
-		ret = -ENOTSUP;
+	if (type == IEEE802154_FILTER_TYPE_IEEE_ADDR)
+	{
+		return ieee802154_gecko_set_ieee_addr(dev, filter->ieee_addr);
+	}
+	else if (type == IEEE802154_FILTER_TYPE_SHORT_ADDR)
+	{
+		return ieee802154_gecko_set_short_addr(dev, filter->short_addr);
+	}
+	else if (type == IEEE802154_FILTER_TYPE_PAN_ID)
+	{
+		return ieee802154_gecko_set_pan_id(dev, filter->pan_id);
 	}
 
-	return ret;
+	return -ENOTSUP;
 }
 
 static int ieee802154_gecko_set_txpower(struct device *dev, s16_t dbm)
@@ -298,7 +319,7 @@ static int ieee802154_gecko_set_txpower(struct device *dev, s16_t dbm)
 	ARG_UNUSED(dev);
 	ARG_UNUSED(dbm);
 
-	return -ENOTSUP;
+        return -ENOTSUP;
 }
 
 static int ieee802154_gecko_start(struct device *dev)
@@ -307,9 +328,10 @@ static int ieee802154_gecko_start(struct device *dev)
 	RAIL_Status_t status;
 
 	status = RAIL_StartRx(dev_data->rail_handle, dev_data->channel, NULL);
-	if (status != RAIL_STATUS_NO_ERROR) {
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
 		LOG_DBG("RAIL_StartRx returned an error %d", status);
-		return -EIO;
+	        return -EIO;
 	}
 
 	return 0;
@@ -325,20 +347,24 @@ static int ieee802154_gecko_stop(struct device *dev)
 }
 
 static int ieee802154_gecko_tx(struct device *dev, enum ieee802154_tx_mode mode,
-			       struct net_pkt *pkt, struct net_buf *frag)
+		    struct net_pkt *pkt, struct net_buf *frag)
 {
 	struct ieee802154_gecko_context *dev_data = DEV_DATA(dev);
-	u8_t frame_len = frag->len + IEEE802154_FCS_LENGTH;
+	u8_t payload_len = frag->len;
+	u8_t *payload = frag->data;
 	RAIL_Status_t status;
 
+	LOG_DBG("%p (%u)", payload, payload_len);
+
 	/* Write packet length at rail_tx_fifo[0] */
-	if (RAIL_WriteTxFifo(dev_data->rail_handle, &frame_len, 1, true) != 1) {
+	if (1 != RAIL_WriteTxFifo(dev_data->rail_handle, &payload_len, 1, true))
+	{
 		LOG_DBG("Writing packet length to TxFifo failed");
 		return -EIO;
 	}
 	/* Add packet payload */
-	if (RAIL_WriteTxFifo(dev_data->rail_handle, frag->data, frag->len, false)
-	    != frag->len) {
+	if (payload_len != RAIL_WriteTxFifo(dev_data->rail_handle, payload, payload_len, false))
+	{
 		LOG_DBG("Writing packet payload to TxFifo failed");
 		return -EIO;
 	}
@@ -352,7 +378,7 @@ static int ieee802154_gecko_tx(struct device *dev, enum ieee802154_tx_mode mode,
 		status = RAIL_StartCcaLbtTx(dev_data->rail_handle,
 				dev_data->channel,
 				RAIL_TX_OPTIONS_DEFAULT,
-				&rail_lbt_config,
+                                &rail_lbt_config,
 				NULL);
 		break;
 	case IEEE802154_TX_MODE_CSMA_CA:
@@ -379,7 +405,19 @@ static int ieee802154_gecko_tx(struct device *dev, enum ieee802154_tx_mode mode,
 		return -EIO;
 	}
 
-	return dev_data->tx_status;
+	LOG_DBG("Result: %d", dev_data->tx_status);
+#if 0
+	if (dev_data->tx_status == 0) {
+		if (dev_data->ack_frame.psdu == NULL) {
+			/* No ACK was requested. */
+			return 0;
+		}
+
+		/* Handle ACK packet. */
+		return handle_ack(dev_data);
+	}
+#endif
+	return 0;
 }
 
 #define RAIL_IRQ_PRIO  0
@@ -413,13 +451,13 @@ void ieee802154_gecko_irq_config(void)
 static int ieee802154_gecko_init_rail(struct device *dev)
 {
 	struct ieee802154_gecko_context *dev_data = DEV_DATA(dev);
-	const struct ieee802154_gecko_dev_cfg *const dev_cfg = DEV_CFG(dev);
 	RAIL_Status_t status;
 
 	dev_data->rail_handle = RAIL_Init(&rail_config, NULL);
-	if (dev_data->rail_handle == NULL) {
+	if (dev_data->rail_handle == NULL)
+	{
 		LOG_DBG("Failed to get RAIL handle");
-		return -EIO;
+	        return -EIO;
 	}
 	RAIL_Idle(dev_data->rail_handle, RAIL_IDLE, true);
 
@@ -443,16 +481,17 @@ static int ieee802154_gecko_init_rail(struct device *dev)
 		.rampTime = 10U,
 	};
 	status = RAIL_ConfigTxPower(dev_data->rail_handle, &txPowerConfig);
-	if (status != RAIL_STATUS_NO_ERROR) {
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
 		LOG_DBG("RAIL_ConfigTxPower returned an error %d", status);
-		return -EIO;
+	        return -EIO;
 	}
 
-	status = RAIL_SetTxPower(dev_data->rail_handle,
-				 dev_cfg->init_tx_power_level_raw);
-	if (status != RAIL_STATUS_NO_ERROR) {
+	status = RAIL_SetTxPower(dev_data->rail_handle, RAIL_TX_POWER_LEVEL_MAX);
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
 		LOG_DBG("RAIL_SetTxPower returned an error %d", status);
-		return -EIO;
+	        return -EIO;
 	}
 
 	RAIL_SetTxFifo(dev_data->rail_handle, dev_data->rail_tx_fifo, 0,
@@ -467,16 +506,18 @@ static int ieee802154_gecko_init_ieee802154(struct device *dev)
 	RAIL_Status_t status;
 
 	status = RAIL_IEEE802154_Config2p4GHzRadio(dev_data->rail_handle);
-	if (status != RAIL_STATUS_NO_ERROR) {
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
 		LOG_DBG("RAIL_IEEE802154_Config2p4GHzRadio returned an error %d",
 			status);
-		return -EIO;
+	        return -EIO;
 	}
 
 	status = RAIL_IEEE802154_Init(dev_data->rail_handle, &rail_ieee802154_config);
-	if (status != RAIL_STATUS_NO_ERROR) {
+	if (status != RAIL_STATUS_NO_ERROR)
+	{
 		LOG_DBG("RAIL_IEEE802154_Init returned an error %d", status);
-		return -EIO;
+	        return -EIO;
 	}
 
 	return 0;
@@ -490,7 +531,8 @@ static int ieee802154_gecko_init(struct device *dev)
 	k_sem_init(&dev_data->tx_wait, 0, 1);
 
 	ret = ieee802154_gecko_init_rail(dev);
-	if (ret != 0) {
+	if (ret != 0)
+	{
 		LOG_ERR("%d: Failed to initialize RAIL", ret);
 		return ret;
 	}
@@ -498,7 +540,8 @@ static int ieee802154_gecko_init(struct device *dev)
 	ieee802154_gecko_irq_config();
 
 	ret = ieee802154_gecko_init_ieee802154(dev);
-	if (ret != 0) {
+	if (ret != 0)
+	{
 		LOG_ERR("%d: Failed to initialize IEEE 802.15.4 Radio", ret);
 		return ret;
 	}
@@ -529,38 +572,38 @@ static struct ieee802154_radio_api ieee802154_gecko_radio_api = {
 	.configure = ieee802154_gecko_configure,
 };
 
-DEVICE_DECLARE(ieee802154_gecko_dev0);
+DEVICE_DECLARE(ieee802154_gecko_154_radio);
 
 static struct ieee802154_gecko_context ieee802154_gecko_dev0_data;
-static const struct ieee802154_gecko_dev_cfg ieee802154_gecko_dev0_config = {
-	.init_tx_power_level_raw = CONFIG_IEEE802154_GECKO_TXPOWER_RAW,
-};
+static const struct ieee802154_gecko_dev_config ieee802154_gecko_dev0_config;
 
-static void ieee802154_gecko_rail_cb(RAIL_Handle_t railHandle,
-				     RAIL_Events_t event)
+static void ieee802154_gecko_rail_cb(RAIL_Handle_t railHandle, RAIL_Events_t event)
 {
-	struct device *dev = DEVICE_GET(ieee802154_gecko_dev0);
+	struct device *dev = DEVICE_GET(ieee802154_gecko_154_radio);
 
-	if (event & RAIL_EVENT_CAL_NEEDED) {
+	if (event & RAIL_EVENT_CAL_NEEDED ) {
 		RAIL_Calibrate(railHandle, NULL, RAIL_CAL_ALL_PENDING);
 	}
 
 	if (event & (RAIL_EVENT_TX_ABORTED |
 		     RAIL_EVENT_TX_BLOCKED |
 		     RAIL_EVENT_TX_UNDERFLOW |
-		     RAIL_EVENT_TX_CHANNEL_BUSY)) {
-		LOG_DBG("RAIL_Events_t 0x%llx", event);
-		ieee802154_gecko_dev0_data.tx_status = -EIO;
+		     RAIL_EVENT_TX_CHANNEL_BUSY))
+	{
+		ieee802154_gecko_dev0_data.tx_status = -1;
 		k_sem_give(&ieee802154_gecko_dev0_data.tx_wait);
+		LOG_DBG("RAIL_Events_t 0x%llx", event);
 	}
 
-	if (event & RAIL_EVENT_TX_PACKET_SENT) {
-		LOG_DBG("RAIL_Events_t: TX_PACKET_SENT");
+	if (event & RAIL_EVENT_TX_PACKET_SENT)
+	{
 		ieee802154_gecko_dev0_data.tx_status = 0;
 		k_sem_give(&ieee802154_gecko_dev0_data.tx_wait);
+		LOG_DBG("RAIL_Events_t: TX_PACKET_SENT");
 	}
 
-	if (event & RAIL_EVENT_RX_PACKET_RECEIVED) {
+	if (event & RAIL_EVENT_RX_PACKET_RECEIVED)
+	{
 		RAIL_RxPacketInfo_t packet_info;
 		RAIL_RxPacketHandle_t rx_packet_handle;
 
@@ -570,18 +613,31 @@ static void ieee802154_gecko_rail_cb(RAIL_Handle_t railHandle,
 				ieee802154_gecko_dev0_data.rail_handle,
 				RAIL_RX_PACKET_HANDLE_NEWEST,
 				&packet_info);
-		if ((rx_packet_handle != RAIL_RX_PACKET_HANDLE_INVALID) &&
-		    (packet_info.packetStatus == RAIL_RX_PACKET_READY_SUCCESS)) {
+		if (rx_packet_handle != RAIL_RX_PACKET_HANDLE_INVALID)
+		{
+			if ((packet_info.packetStatus != RAIL_RX_PACKET_READY_SUCCESS) &&
+			    (packet_info.packetStatus != RAIL_RX_PACKET_READY_CRC_ERROR))
+			{
+				LOG_DBG("RAIL_Events_t 0x%llx: RX received with error", event);
+				return;
+			}
+
 			ieee802154_gecko_rx(dev, rx_packet_handle, &packet_info);
 		}
 	}
 }
 
+#if defined(CONFIG_NET_L2_IEEE802154)
 #define L2 IEEE802154_L2
 #define L2_CTX_TYPE NET_L2_GET_CTX_TYPE(IEEE802154_L2)
 #define MTU 125
+#elif defined(CONFIG_NET_L2_OPENTHREAD)
+#define L2 OPENTHREAD_L2
+#define L2_CTX_TYPE NET_L2_GET_CTX_TYPE(OPENTHREAD_L2)
+#define MTU 1280
+#endif
 
-NET_DEVICE_INIT(ieee802154_gecko_dev0, CONFIG_IEEE802154_GECKO_DRV_NAME,
+NET_DEVICE_INIT(ieee802154_gecko_154_radio, CONFIG_IEEE802154_GECKO_DRV_NAME,
 		ieee802154_gecko_init, device_pm_control_nop,
 		&ieee802154_gecko_dev0_data, &ieee802154_gecko_dev0_config,
 		CONFIG_IEEE802154_GECKO_INIT_PRIORITY,

@@ -11,3 +11,8 @@ zephyr_library_sources_ifdef(CONFIG_IEEE802154_CC1200 ieee802154_cc1200.c)
 zephyr_library_sources_ifdef(CONFIG_IEEE802154_CC13XX_CC26XX ieee802154_cc13xx_cc26xx.c)
 zephyr_library_sources_ifdef(CONFIG_IEEE802154_RF2XX ieee802154_rf2xx.c)
 zephyr_library_sources_ifdef(CONFIG_IEEE802154_RF2XX ieee802154_rf2xx_iface.c)
+
+if(CONFIG_IEEE802154_GECKO)
+	zephyr_library_sources(ieee802154_gecko.c)
+	zephyr_library_link_libraries(RAIL_LIB)
+endif()

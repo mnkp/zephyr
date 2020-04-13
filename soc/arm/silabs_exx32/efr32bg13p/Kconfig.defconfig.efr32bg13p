@@ -11,6 +11,10 @@ config I2C_GECKO
 	default y
 	depends on I2C
 
+config IEEE802154_GECKO
+	default y
+	depends on IEEE802154
+
 config SOC_FLASH_GECKO
 	default y
 	depends on FLASH

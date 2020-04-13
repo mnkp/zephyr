@@ -5,7 +5,7 @@
 
 menuconfig IEEE802154_GECKO
 	bool "SiLabs Gecko IEEE 802.15.4 Driver"
-	depends on NETWORKING && SOC_GECKO_HAS_IEEE802154_RADIO
+	depends on NETWORKING && SOC_GECKO_HAS_RAIL_LIB
 	select SOC_GECKO_RAIL_LIB
 	select SOC_GECKO_RAIL_LIB_IEEE802154
 
@@ -17,13 +17,6 @@ config IEEE802154_GECKO_DRV_NAME
 	help
 	  This option sets the driver name. Do not change it unless
 	  you know what you are doing.
-
-config IEEE802154_GECKO_TXPOWER_RAW
-	int "Radio TX Power"
-	default 254
-	help
-	  Standard transmission power in RAIL raw units. Value 254 indicates the
-	  highest power level available on the current PA.
 
 config IEEE802154_GECKO_INIT_PRIORITY
 	int "SiLabs Gecko Driver initialization priority"
