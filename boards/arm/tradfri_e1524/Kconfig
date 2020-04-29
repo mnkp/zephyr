@@ -1,0 +1,12 @@
+# TRADFRI E1524 board configuration
+
+# Copyright (c) 2020 Markus Becker
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_INIT_PRIORITY
+	int
+	default KERNEL_INIT_PRIORITY_DEFAULT
+	depends on BOARD_EFR32MG_E1524
+	help
+	  Board initialization priority. This must be bigger than
+	  GPIO_GECKO_COMMON_INIT_PRIORITY.
