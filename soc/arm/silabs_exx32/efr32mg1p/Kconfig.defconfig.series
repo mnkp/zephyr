@@ -1,0 +1,20 @@
+# EFM32WG series configuration options
+
+# Copyright (c) 2018 Diego Sueiro
+# SPDX-License-Identifier: Apache-2.0
+
+if SOC_SERIES_EFR32MG1P
+
+config SOC_SERIES
+	default "efr32mg1p"
+
+config SOC_PART_NUMBER
+	default "EFR32MG1P132F256GM32" if SOC_PART_NUMBER_EFR32MG1P132F256GM32
+
+config NUM_IRQS
+	# must be >= the highest interrupt number used
+	default 49
+
+source "soc/arm/silabs_exx32/efr32mg1p/Kconfig.defconfig.efr32mg1p"
+
+endif # SOC_SERIES_EFR32MG12P

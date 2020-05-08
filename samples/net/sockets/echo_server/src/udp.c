@@ -20,16 +20,24 @@ LOG_MODULE_DECLARE(net_echo_server_sample, LOG_LEVEL_DBG);
 #include "common.h"
 #include "certificate.h"
 
+#if defined(CONFIG_NET_IPV4)
 static void process_udp4(void);
+#endif
+#if defined(CONFIG_NET_IPV6)
 static void process_udp6(void);
+#endif
 
+#if defined(CONFIG_NET_IPV4)
 K_THREAD_DEFINE(udp4_thread_id, STACK_SIZE,
 		process_udp4, NULL, NULL, NULL,
 		THREAD_PRIORITY, 0, -1);
+#endif
 
+#if defined(CONFIG_NET_IPV6)
 K_THREAD_DEFINE(udp6_thread_id, STACK_SIZE,
 		process_udp6, NULL, NULL, NULL,
 		THREAD_PRIORITY, 0, -1);
+#endif
 
 static int start_udp_proto(struct data *data, struct sockaddr *bind_addr,
 			   socklen_t bind_addrlen)
@@ -136,6 +144,7 @@ static int process_udp(struct data *data)
 	return ret;
 }
 
+#if defined(CONFIG_NET_IPV4)
 static void process_udp4(void)
 {
 	int ret;
@@ -159,7 +168,9 @@ static void process_udp4(void)
 		}
 	}
 }
+#endif
 
+#if defined(CONFIG_NET_IPV6)
 static void process_udp6(void)
 {
 	int ret;
@@ -183,16 +194,21 @@ static void process_udp6(void)
 		}
 	}
 }
+#endif
 
 void start_udp(void)
 {
+#if defined(CONFIG_NET_IPV6)
 	if (IS_ENABLED(CONFIG_NET_IPV6)) {
 		k_thread_start(udp6_thread_id);
 	}
+#endif
 
+#if defined(CONFIG_NET_IPV4)
 	if (IS_ENABLED(CONFIG_NET_IPV4)) {
 		k_thread_start(udp4_thread_id);
 	}
+#endif
 }
 
 void stop_udp(void)
@@ -200,17 +216,21 @@ void stop_udp(void)
 	/* Not very graceful way to close a thread, but as we may be blocked
 	 * in recvfrom call it seems to be necessary
 	 */
+#if defined(CONFIG_NET_IPV6)
 	if (IS_ENABLED(CONFIG_NET_IPV6)) {
 		k_thread_abort(udp6_thread_id);
 		if (conf.ipv6.udp.sock >= 0) {
 			(void)close(conf.ipv6.udp.sock);
 		}
 	}
+#endif
 
+#if defined(CONFIG_NET_IPV4)
 	if (IS_ENABLED(CONFIG_NET_IPV4)) {
 		k_thread_abort(udp4_thread_id);
 		if (conf.ipv4.udp.sock >= 0) {
 			(void)close(conf.ipv4.udp.sock);
 		}
 	}
+#endif
 }

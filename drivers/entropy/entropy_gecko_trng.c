@@ -16,16 +16,21 @@ static void entropy_gecko_trng_read(u8_t *output, size_t len)
 	u32_t tmp;
 	u32_t *data = (u32_t *) output;
 
+/*
+uint16_t RAIL_GetRadioEntropy(RAIL_Handle_t railHandle,
+                              uint8_t *buffer,
+                              uint16_t bytes);
+*/
 	/* Read known good available data. */
 	while (len >= 4) {
-		*data++ = TRNG0->FIFO;
+//		*data++ = TRNG0->FIFO;
 		len -= 4;
 	}
 	if (len > 0) {
 		/* Handle the case where len is not a multiple of 4
 		 * and FIFO data is available.
 		 */
-		tmp = TRNG0->FIFO;
+//		tmp = TRNG0->FIFO;
 		memcpy(data, (const u8_t *) &tmp, len);
 	}
 }
@@ -39,7 +44,7 @@ static int entropy_gecko_trng_get_entropy(struct device *dev, u8_t *buffer,
 	ARG_UNUSED(dev);
 
 	while (length) {
-		available = TRNG0->FIFOLEVEL * 4;
+		available = 4; //= TRNG0->FIFOLEVEL * 4;
 		if (available == 0) {
 			return -EINVAL;
 		}
@@ -61,7 +66,7 @@ static int entropy_gecko_trng_get_entropy_isr(struct device *dev, u8_t *buf,
 
 		/* No busy wait; return whatever data is available. */
 		size_t count;
-		size_t available = TRNG0->FIFOLEVEL * 4;
+		size_t available = 4; //TRNG0->FIFOLEVEL * 4;
 
 		if (available == 0) {
 			return -ENODATA;
@@ -85,10 +90,10 @@ static int entropy_gecko_trng_get_entropy_isr(struct device *dev, u8_t *buf,
 static int entropy_gecko_trng_init(struct device *device)
 {
 	/* Enable the TRNG0 clock. */
-	CMU_ClockEnable(cmuClock_TRNG0, true);
+	//CMU_ClockEnable(cmuClock_TRNG0, true);
 
 	/* Enable TRNG0. */
-	TRNG0->CONTROL = TRNG_CONTROL_ENABLE;
+	//TRNG0->CONTROL = TRNG_CONTROL_ENABLE;
 	return 0;
 }
 

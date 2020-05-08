@@ -1,0 +1,9 @@
+# TRADFRI E1524 board
+
+# Copyright (c) 2020, Markus Becker
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_EFR32MG_E1524
+	bool "Ikea Tradfri E1524 (5 button remote)"
+	depends on SOC_SERIES_EFR32MG1P
+	select SOC_PART_NUMBER_EFR32MG1P132F256GM32

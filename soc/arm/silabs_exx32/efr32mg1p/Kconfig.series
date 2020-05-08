@@ -1,10 +1,10 @@
-# EFR32MG12P MCU line
+# EFR32MG1P MCU line
 
 # Copyright (c) 2018 Diego Sueiro
 # SPDX-License-Identifier: Apache-2.0
 
-config SOC_SERIES_EFR32MG12P
-	bool "EFR32MG12P Series MCU"
+config SOC_SERIES_EFR32MG1P
+	bool "EFR32MG1P Series MCU"
 	select ARM
 	select CPU_CORTEX_M4
 	select CPU_CORTEX_M_HAS_DWT

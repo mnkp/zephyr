@@ -21,7 +21,11 @@
  * The number of message buffers in the buffer pool.
  *
  */
-#define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS                   128
+//#define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS                   128
+#define OPENTHREAD_CONFIG_NUM_MESSAGE_BUFFERS                   6
+
+
+#define OPENTHREAD_CONFIG_MLE_MAX_CHILDREN			1
 
 /**
  * @def OPENTHREAD_CONFIG_MAX_STATECHANGE_HANDLERS
@@ -38,7 +42,7 @@
  * The number of EID-to-RLOC cache entries.
  *
  */
-#define OPENTHREAD_CONFIG_TMF_ADDRESS_CACHE_ENTRIES             20
+#define OPENTHREAD_CONFIG_TMF_ADDRESS_CACHE_ENTRIES             10
 
 /**
  * @def OPENTHREAD_CONFIG_LOG_PREPEND_LEVEL

@@ -9,9 +9,11 @@
 #define MY_PORT 4242
 #if defined(CONFIG_NET_SOCKETS_SOCKOPT_TLS) || defined(CONFIG_NET_TCP2) || \
 	defined(CONFIG_COVERAGE)
-#define STACK_SIZE 4096
-#else
+//#define STACK_SIZE 4096
 #define STACK_SIZE 1024
+#else
+//#define STACK_SIZE 1024
+#define STACK_SIZE 512
 #endif
 #define THREAD_PRIORITY K_PRIO_COOP(8)
 #define RECV_BUFFER_SIZE 1280
